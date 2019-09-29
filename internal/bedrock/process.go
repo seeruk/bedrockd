@@ -3,8 +3,11 @@ package bedrock
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"io"
+	"os"
 	"os/exec"
+	"path"
 	"strings"
 	"sync"
 	"syscall"
@@ -49,9 +52,18 @@ func (p *Process) Start() error {
 		return errors.New("bedrock process appears to already be started")
 	}
 
+	executable, err := os.Executable()
+	if err != nil {
+		p.Unlock()
+		return errors.New("unable to get current executable location")
+	}
+
+	dir := path.Dir(executable)
+
 	p.ctx, p.cfn = context.WithCancel(context.Background())
-	p.command = exec.Command("/home/elliot/Downloads/bedrock/bedrock_server")
-	p.command.Dir = "/home/elliot/Downloads/bedrock"
+	p.command = exec.Command(fmt.Sprintf("%s/bedrock_server", dir))
+	p.command.Dir = dir
+	p.command.Env = []string{"LD_LIBRARY_PATH=."}
 
 	// Start the command within it's own process group, so that it doesn't receive the signals
 	// that this application receives. This allows us to correctly quit the server.
